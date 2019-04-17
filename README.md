@@ -7,7 +7,7 @@ Code for the paper "Deep Transformers for Abstractive Summarization"
 To run the training script in [train.py](train.py) you will need in addition:
 - PyTorch (version >=0.4)
 - tqdm
-- rouge
+- py-rouge
 - [newsroom](https://github.com/clic-lab/newsroom)
 - tensorflow (cpu version is ok)
 - spacy (and 'en' model)
