@@ -162,8 +162,8 @@ class TransformerModel(nn.Module):
         if doc_embed:
             self.article_embed = nn.Embedding(2, cfg.n_embd)
             self.summary_embed = nn.Embedding(2, cfg.n_embd)
-            nn.init.normal_(self.article_embed.weight, 0, 0.1)
-            nn.init.normal_(self.summary_embed.weight, 0, 0.1)
+            nn.init.normal_(self.article_embed.weight, 0, 0.01)
+            nn.init.normal_(self.summary_embed.weight, 0, 0.01)
         self.drop = nn.Dropout(cfg.embd_pdrop)
         block = Block(n_ctx, cfg, scale=True)
         self.h = nn.ModuleList([copy.deepcopy(block) for _ in range(cfg.n_layer)])
