@@ -40,6 +40,7 @@ class TextEncoder():
 
     def __init__(self, encoder_path, bpe_path):
         self.nlp = spacy.load('en', disable=['parser', 'tagger', 'ner', 'textcat'])
+        self.nlp.max_length = 1500000
         self.encoder = json.load(open(encoder_path))
         self.decoder = {v:k for k, v in self.encoder.items()}
         merges = open(bpe_path, encoding='utf-8').read().split('\n')[1:-1]

@@ -1,18 +1,18 @@
-# transformer-abstractive-summarization
-
-Code for the paper "Deep Transformers for Abstractive Summarization"
+Code for the paper "Efficient Adaption of Pretrained Transformers for Abstractive Summarization"
 
 ## Requirements
 
 To run the training script in [train.py](train.py) you will need in addition:
 - PyTorch (version >=0.4)
 - tqdm
-- rouge
+- pyrouge
 - [newsroom](https://github.com/clic-lab/newsroom)
 - tensorflow (cpu version is ok)
+- nltk
 - spacy (and 'en' model)
 
 You can download the weights of the OpenAI pre-trained version by cloning [Alec Radford's repo](https://github.com/openai/finetune-transformer-lm) and placing the `model` folder containing the pre-trained weights in the present repo.
+
 
 In order to run this code, you will need to pre-process the datasets using bpe through the scripts provided in [scripts](scripts)
 ## Dataset Preprocessing
@@ -20,20 +20,22 @@ The training and evaluation scripts expect 3 total output files: `train_encoded.
 
 ### CNN/Daily Mail
 The data and splits used in the paper can be downloaded from [OpenNMT](http://opennmt.net/OpenNMT-py/Summarization.html). 
+First, remove the start and end sentence tags using the sed command in the link provided.
 To process the data, run the following command:
 ```
 python scripts/encode_cnndm.py --src_file {source file} --tgt_file {target file} --out_file {output file}
 ```
 
 ### XSum
-The data and splits used in the paper can be downloaded from [XSum](https://github.com/EdinburghNLP/XSum/tree/master/XSum-Dataset). 
+The data and splits used in the paper can be scraped using [XSum](https://github.com/EdinburghNLP/XSum/tree/master/XSum-Dataset). 
+Run the commands up through `Extract text from HTML Files` section.
 To process the data, run the following command:
 ```
 python scripts/encode_xsum.py --summary_dir {summary directory} --splits_file {split file} --train_file {train file} --val_file {val file} --test_file {test_file}
 ```
 
 ### Newsroom
-The data and splits used in the paper can be downloaded from [Newsroom](https://github.com/clic-lab/newsroom). 
+The data and splits used in the paper can be downloaded from [Newsroom](https://summari.es/download/). 
 To process the data, run the following command:
 ```
 python scripts/encode_newsroom.py --in_file {input split file} --out_file {output file}
@@ -58,20 +60,12 @@ to train the pre-trained document embedding model over `dataset` for 10 epochs u
 To evaluate a model, run the following command:
 ```
 python evaluate.py \
-  --data_dir {directory containing encoded data} \
+  --data_file {path to encoded data file encoded data} \
   --checkpoint {checkpoint to load model weights from} \
   --beam {beam size to do beam search with} \
   --doc_model \
   --use_test \
 ```
-to evaluate the document embedding model on the test set. Evaluation is currently optimized for multi-gpu usage, and may not work for single gpu machines.
-
-To evaluate a model on the newsroom validation set (use the previous command for all other evaluation), run the following command:
-```
-python evaluate.py \
-  --data_dir {directory containing encoded data} \
-  --checkpoint {checkpoint to load model weights from} \
-  --beam {beam size to do beam search with} \
-  --doc_model \
-```
-to evaluate the document embedding model on the validation set. Evaluation is currently optimized for multi-gpu usage, and may not work for single gpu machines.
+to evaluate the document embedding model on the test set. Evaluation is currently optimized for multi-gpu usage, and may not work for single gpu machines. 
+Since the evaluation script will leave out some examples if the number of data points isn't divisible by the number of gpus, you might need to run the 
+`create_small_test.py` script to get the last few files that are being left out and aggregate results at the end.

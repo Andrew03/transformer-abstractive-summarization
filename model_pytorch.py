@@ -215,9 +215,9 @@ class LMModel(nn.Module):
         pos_emb_mask[:, :, -n_ctx:] = -1e12
         self.register_buffer('pos_emb_mask', pos_emb_mask)
 
-    def forward(self, pad_output, mask_output=None, text_encoder=None, device=None, beam=0, gen_len=110, k=0, decoding_strategy=0, log=True, generate=False):
+    def forward(self, pad_output, mask_output=None, text_encoder=None, device=None, beam=0, gen_len=110, k=0, decoding_strategy=0, log=True, generate=False, min_len=None):
         if generate:
-            return self.generate(pad_output, mask_output, text_encoder, device, beam, gen_len, k, decoding_strategy)
+            return self.generate(pad_output, mask_output, text_encoder, device, beam, gen_len, k, decoding_strategy, min_len=min_len)
         return self._forward(pad_output, mask_output, log)
 
 
@@ -237,7 +237,7 @@ class LMModel(nn.Module):
         return torch.cat((X, next_x), 1)
 
 
-    def sample(self, pad_output, mask, classify_idx, gen_len=110, k=0, decoding_strategy=0):
+    def sample(self, pad_output, mask, classify_idx, text_encoder, gen_len=110, k=0, decoding_strategy=0, min_len=None):
         XMB = pad_output
         seen_trigrams = [{} for _ in range(XMB.size(0))]
         for _ in range(gen_len):
@@ -273,7 +273,7 @@ class LMModel(nn.Module):
         return XMB[:, -gen_len:, 0]
 
 
-    def beam_search(self, pad_output, mask, classify_idx, beam, gen_len=110):
+    def beam_search(self, pad_output, mask, classify_idx, text_encoder, beam, gen_len=110, min_len=None):
         batch_size = pad_output.size(0)
         XMB = pad_output
         finished_beams = [[] for _ in range(batch_size)]
@@ -331,7 +331,15 @@ class LMModel(nn.Module):
             #TODO Might be able to batch this
             for i in range(finished_mask.size(0)):
                 if finished_mask[i].item() == 1:
-                    finished_beams[i // (beam * beam)].append((XMB[i, 1+512+1:, 0], beam_probs[i].item() / XMB.size(1) - 513)) # 513 to include classify tok in error and avoid division by 0
+                    tokens = []
+                    for tok in XMB[i, 1+512+1:-1, 0]:
+                        if tok.item() in text_encoder.decoder:
+                            tokens.append(text_encoder.decoder[tok.item()].replace('</w>', ' ').replace('\n', ''))
+                        else:
+                            tokens.append(" <unk> ")
+                    phrase = ' '.join(''.join(tokens).split())
+                    if min_len is None or len(phrase.split(" ")) >= min_len:
+                        finished_beams[i // (beam * beam)].append((XMB[i, 1+512+1:, 0], beam_probs[i].item() / XMB.size(1) - 513)) # 513 to include classify tok in error and avoid division by 0
                     beam_probs[i] = -1e8
         finished_mask = beam_toks.eq(classify_idx)
         beam_seqs = [sorted(finished_beam, key=lambda x: x[1], reverse=True) for finished_beam in finished_beams]
@@ -341,7 +349,7 @@ class LMModel(nn.Module):
             tokens[i, :beam_seq.size(0)] = beam_seq
         return tokens
 
-    def generate(self, pad_output, mask, text_encoder, device, beam=0, gen_len=110, k=0, decoding_strategy=0):
+    def generate(self, pad_output, mask, text_encoder, device, beam=0, gen_len=110, k=0, decoding_strategy=0, min_len=None):
         classify_idx = text_encoder.encoder['_classify_']
         input_toks = pad_output[:, :1+512+1, 0] # includes delimiter
         target_toks = pad_output[:, -(gen_len+1):, 0]
@@ -352,9 +360,9 @@ class LMModel(nn.Module):
         pad_output = pad_output.to(device)
         XMB = pad_output[:, :1+512+1]
         if beam == 0:
-            generated_toks = self.sample(XMB, mask, classify_idx, gen_len, k, decoding_strategy)
+            generated_toks = self.sample(XMB, mask, classify_idx, text_encoder, gen_len, k, decoding_strategy, min_len=min_len)
         else:
-            generated_toks = self.beam_search(XMB, mask, classify_idx, beam=beam, gen_len=gen_len)
+            generated_toks = self.beam_search(XMB, mask, classify_idx, text_encoder, beam=beam, gen_len=gen_len, min_len=min_len)
         return generated_toks.type_as(XMB), input_toks.type_as(XMB), target_toks.type_as(XMB)
 
 

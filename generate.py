@@ -19,10 +19,10 @@ def get_rouge_scores(scores, index):
     rougel = [scores['rouge-l'][index]['f'][0], scores['rouge-l'][index]['p'][0], scores['rouge-l'][index]['r'][0]]
     return [rouge1, rouge2, rougel]
 
-def generate_outputs(model, pad_output, mask_output, text_encoder, device, beam, gen_len, k, decoding_strategy):
+def generate_outputs(model, pad_output, mask_output, text_encoder, device, beam, gen_len, k, decoding_strategy, min_len=None):
     src_strs, tgt_strs, gen_strs = [], [], []
     mask = mask_output
-    outputs = model(pad_output, mask_output, text_encoder, device, beam=beam, gen_len=gen_len, k=k, decoding_strategy=decoding_strategy, generate=True)
+    outputs = model(pad_output, mask_output, text_encoder, device, beam=beam, gen_len=gen_len, k=k, decoding_strategy=decoding_strategy, generate=True, min_len=min_len)
     for generated_toks, input_toks, target_toks in outputs:
         for idx in range(generated_toks.size(0)):
             src_str = toks_to_str(input_toks[idx], text_encoder, is_input=True, mask=mask[idx])
@@ -178,6 +178,8 @@ if __name__ == '__main__':
     parser.add_argument('--beam', type=int, default=0,
                         help='If this is 0, decoding_strategy will be used, if this is greater than 0 beam search will be used with the specified beam size')
     parser.add_argument('--doc_model', action='store_true',
+                        help='Set to use the document embedding model')
+    parser.add_argument('--min_len', type=int, default=None
                         help='Set to use the document embedding model')
 
     args = parser.parse_args()
