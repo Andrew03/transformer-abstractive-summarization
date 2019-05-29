@@ -3,7 +3,6 @@ import os
 import random
 
 import numpy as np
-import rouge
 import torch
 from tqdm import tqdm
 
@@ -12,12 +11,6 @@ from data_loader import get_loader
 from model_pytorch import LMModel, load_openai_pretrained_model
 from parallel import DataParallelModel
 from text_utils import TextEncoder
-
-def get_rouge_scores(scores, index):
-    rouge1 = [scores['rouge-1'][index]['f'][0], scores['rouge-1'][index]['p'][0], scores['rouge-1'][index]['r'][0]]
-    rouge2 = [scores['rouge-2'][index]['f'][0], scores['rouge-2'][index]['p'][0], scores['rouge-2'][index]['r'][0]]
-    rougel = [scores['rouge-l'][index]['f'][0], scores['rouge-l'][index]['p'][0], scores['rouge-l'][index]['r'][0]]
-    return [rouge1, rouge2, rougel]
 
 def generate_outputs(model, pad_output, mask_output, text_encoder, device, beam, gen_len, k, decoding_strategy, min_len=None):
     src_strs, tgt_strs, gen_strs = [], [], []
@@ -105,47 +98,11 @@ def main(args):
             hyps.extend(gen_strs)
             refs.extend(tgt_strs)
 
-    scorer = rouge.Rouge(metrics=['rouge-n', 'rouge-l'],
-                         max_n=4,
-                         limit_length=True,
-                         length_limit=110,
-                         length_limit_type='words',
-                         apply_avg=False,
-                         apply_best=False,
-                         alpha=0.5, # Default F1_score
-                         weight_factor=1.2,
-                         stemming=True)
-    scores = scorer.get_scores(hyps, refs)
-    total_rouge1, total_rouge2, total_rougel = [0, 0, 0], [0, 0, 0], [0, 0, 0]
     for i in range(len(hyps)):
         print("*" * 50)
         print("Source: {}".format(srcs[i]))
         print('Hypothesis: {}'.format(hyps[i]))
         print("Reference: {}".format(refs[i]))
-        rouge1, rouge2, rougel = get_rouge_scores(scores, i)
-        total_rouge1[0] += rouge1[0]
-        total_rouge1[1] += rouge1[1]
-        total_rouge1[2] += rouge1[2]
-        total_rouge2[0] += rouge2[0]
-        total_rouge2[1] += rouge2[1]
-        total_rouge2[2] += rouge2[2]
-        total_rougel[0] += rougel[0]
-        total_rougel[1] += rougel[1]
-        total_rougel[2] += rougel[2]
-        print("\tRouge-1: (f: {:.5f}, p: {:.5f}, r: {:.5f})\n\tRouge-2: (f: {:.5f}, p: {:.5f}, r: {:.5f})\n\tRouge-l: (f: {:.5f}, p: {:.5f}, r: {:.5f})".format(*rouge1, *rouge2, *rougel))
-    print("*" * 50 + "\n")
-    print("*" * 50 + "\n")
-    print("Averages")
-    total_rouge1[0] /= len(hyps)
-    total_rouge1[1] /= len(hyps)
-    total_rouge1[2] /= len(hyps)
-    total_rouge2[0] /= len(hyps)
-    total_rouge2[1] /= len(hyps)
-    total_rouge2[2] /= len(hyps)
-    total_rougel[0] /= len(hyps)
-    total_rougel[1] /= len(hyps)
-    total_rougel[2] /= len(hyps)
-    print("\tRouge-1: (f: {:.5f}, p: {:.5f}, r: {:.5f})\n\tRouge-2: (f: {:.5f}, p: {:.5f}, r: {:.5f})\n\tRouge-l: (f: {:.5f}, p: {:.5f}, r: {:.5f})".format(*total_rouge1, *total_rouge2, *total_rougel))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -179,7 +136,7 @@ if __name__ == '__main__':
                         help='If this is 0, decoding_strategy will be used, if this is greater than 0 beam search will be used with the specified beam size')
     parser.add_argument('--doc_model', action='store_true',
                         help='Set to use the document embedding model')
-    parser.add_argument('--min_len', type=int, default=None
+    parser.add_argument('--min_len', type=int, default=None,
                         help='Set to use the document embedding model')
 
     args = parser.parse_args()

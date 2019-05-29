@@ -183,7 +183,7 @@ def main(args):
     n_special = 3
 
     print("Loading dataset...")
-    train_loader = get_loader(os.path.join(data_dir, "train_encoded.jsonl"), args.batch_size, encoder, num_workers=3, shuffle=True)
+    train_loader = get_loader(os.path.join(data_dir, "train_encoded.jsonl"), args.n_batch, encoder, num_workers=3, shuffle=True)
     val_loader = get_loader(os.path.join(data_dir, "val_encoded.jsonl"), n_gpu, encoder, num_workers=0, shuffle=False, max_size=args.num_val_examples)
     print("Train length: {}, Validation length: {}".format(len(train_loader), len(val_loader)))
 
@@ -229,7 +229,7 @@ if __name__ == "__main__":
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('--num_epochs_dat', type=int, default=0)
     parser.add_argument('--num_epochs_ft', type=int, default=20)
-    parser.add_argument('--batch_size', type=int, default=32)
+    parser.add_argument('--n_batch', type=int, default=32)
     parser.add_argument('--max_grad_norm', type=int, default=1)
     parser.add_argument('--lr', type=float, default=6.25e-5)
     parser.add_argument('--lr_warmup', type=float, default=0.002)

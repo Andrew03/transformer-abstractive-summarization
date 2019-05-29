@@ -16,7 +16,7 @@ from opt import OpenAIAdam
 from text_utils import TextEncoder
 from data_loader import get_loader
 from tqdm import tqdm
-from generate import generate_outputs, get_rouge_scores
+from generate import generate_outputs
 from model_pytorch import LMModel, load_openai_pretrained_model
 from parallel import DataParallelModel
 
@@ -33,7 +33,7 @@ def format_text(text, max_len, stop_words=[]):
     for stop_word in stop_words:
         text = text.replace(" {} ".format(stop_word), " ")
     if max_len is not None:
-        text = " ".joiin(text.split(" ")[:max_len])
+        text = " ".join(text.split(" ")[:max_len])
     return text
 
 def evaluate_model(model, val_loader, text_encoder, device, beam, gen_len, k, decoding_strategy, save_file, gen_dir="gen", tgt_dir="tgt", max_len=110, stop_words=[], args=None):
@@ -51,17 +51,17 @@ def evaluate_model(model, val_loader, text_encoder, device, beam, gen_len, k, de
 
     for i in range(len(data["src"])):
         with open(os.path.join(gen_dir, "gen.{}.txt".format(i)), "w") as gen_file:
-            gen_file.write(format_text(data[gen_key][i], max_len, stop_words))
-        with open(os.path.join(gen_dir, "tgt.{}.txt".format(i)), "w") as tgt_file:
-            tgt_file.write(format_text(data[tgt_key][i], max_len, stop_words))
+            gen_file.write(format_text(data["gen"][i], max_len, stop_words))
+        with open(os.path.join(tgt_dir, "tgt.{}.txt".format(i)), "w") as tgt_file:
+            tgt_file.write(format_text(data["tgt"][i], max_len, stop_words))
 
     with open(save_file, "w") as f:
-        json.dump({
+        json.dump(
             get_rouge_scores(gen_dir, tgt_dir),
             f,
             indent=4,
             sort_keys=True
-        })
+        )
 
 def get_rouge_scores(gen_dir, tgt_dir, gen_pattern='gen.(\d+).txt', tgt_pattern='tgt.#ID#.txt'):
     r = Rouge155()
@@ -99,7 +99,7 @@ def main(args):
     dh_model = LMModel(args, vocab=vocab, n_ctx=n_ctx, doc_embed=args.doc_model)
 
     print("Loading model...")
-    load_openai_pretrained_model(dh_model.transformer, n_ctx=n_ctx, n_special=n_special, path="src/model/", path_names="src/")
+    load_openai_pretrained_model(dh_model.transformer, n_ctx=n_ctx, n_special=n_special, path="./model/", path_names="./")
     if args.checkpoint != "none":
         checkpoint = torch.load(args.checkpoint, map_location='cpu')
         state_dict = checkpoint["state_dict"]
@@ -136,8 +136,8 @@ if __name__ == '__main__':
     parser.add_argument('--resid_pdrop', type=float, default=0.1)
     parser.add_argument('--clf_pdrop', type=float, default=0.1)
     parser.add_argument('--afn', type=str, default='gelu')
-    parser.add_argument('--encoder_path', type=str, default='src/model/encoder_bpe_40000.json')
-    parser.add_argument('--bpe_path', type=str, default='src/model/vocab_40000.bpe')
+    parser.add_argument('--encoder_path', type=str, default='model/encoder_bpe_40000.json')
+    parser.add_argument('--bpe_path', type=str, default='model/vocab_40000.bpe')
     parser.add_argument('--checkpoint', type=str, default="none")
     parser.add_argument('--data_file', type=str, required=True)
     parser.add_argument('--beam', type=int, default=0)
@@ -161,3 +161,5 @@ if __name__ == '__main__':
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
+    clear_dirs(args.gen_dir, args.tgt_dir)
+    main(args)

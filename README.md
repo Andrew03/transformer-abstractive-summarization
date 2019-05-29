@@ -52,9 +52,13 @@ python train.py \
   --doc_model \
   --num_epochs_dat 10 \
   --num_epochs_ft 10 \
+  --n_batch 16 \
+  --accum_iter 4 \
   --use_pretrain
 ```
-to train the pre-trained document embedding model over `dataset` for 10 epochs using domain adaptive training, and 10 epochs using fine tuning. Training is currently optimized for multi-gpu usage, and may not work for single gpu machines.
+to train the pre-trained document embedding model over `dataset` for 10 epochs using domain adaptive training, and 10 epochs using fine tuning. The model will
+be trained with a effective batch size of 64, since the actual batch size is 16 and we accumulate gradients over 4 batches. Batch size must be divisible by
+the number of gpus available. Training is currently optimized for multi-gpu usage, and may not work for single gpu machines.
 
 ## Evaluation
 To evaluate a model, run the following command:
@@ -64,7 +68,8 @@ python evaluate.py \
   --checkpoint {checkpoint to load model weights from} \
   --beam {beam size to do beam search with} \
   --doc_model \
-  --use_test \
+  --save_file {file to output results to} \
+  --n_batch {batch size for evaluation, must be divisible by number of gpus}
 ```
 to evaluate the document embedding model on the test set. Evaluation is currently optimized for multi-gpu usage, and may not work for single gpu machines. 
 Since the evaluation script will leave out some examples if the number of data points isn't divisible by the number of gpus, you might need to run the 
